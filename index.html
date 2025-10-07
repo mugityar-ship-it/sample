@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>紫煙くゆる生物室</title>
+<style>
+  :root {
+    --bg: #0f0f12;
+    --fg: #e8e8ee;
+    --muted: #9aa0a6;
+    --accent: #bca0ff;
+    --card: #17171b;
+  }
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", "Yu Gothic", "Meiryo", sans-serif;
+    height:100%;
+  }
+  .wrap{
+    display:flex; flex-direction:column; min-height:100dvh; box-sizing:border-box;
+    padding:16px; gap:12px;
+  }
+  .stage{
+    position:relative; border-radius:16px; background:linear-gradient(180deg,#1a1a22,#0d0d10);
+    min-height:58dvh; display:flex; align-items:center; justify-content:center; overflow:hidden;
+    box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.05);
+  }
+  .char{
+    position:relative; width:min(520px,92vw); aspect-ratio:3/5; 
+    background:#111; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    overflow:hidden; touch-action:manipulation;
+  }
+  .char img{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none;
+  }
+  .overlay{
+    position:absolute; inset:auto 12px 12px 12px; background:rgba(20,20,26,.7); color:var(--fg);
+    border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:10px 12px; font-size:15px; line-height:1.6;
+    backdrop-filter: blur(6px);
+  }
+  .toolbar{
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  button{
+    background:var(--card); color:var(--fg); border:1px solid rgba(255,255,255,.12);
+    border-radius:10px; padding:10px 12px; font-size:14px;
+  }
+  button:active{ transform:translateY(1px); }
+  .note{ color:var(--muted); font-size:12px; }
+  .row{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage" id="stage">
+    <div class="char" id="char" title="タップでセリフ切替">
+      <!-- Put your images in same folder and name them like below -->
+      <!-- Base face (neutral, no coat) -->
+      <img id="img-base" alt="base" src="base.png" />
+      <!-- Lab coat overlay -->
+      <img id="img-coat" alt="coat" src="coat.png" style="display:none" />
+      <!-- Gentle smile face overlay (optional) -->
+      <img id="img-smile" alt="smile" src="smile.png" style="display:none" />
+      <!-- Cigarette overlay (optional) -->
+      <img id="img-smoke" alt="smoke" src="smoke.png" style="display:none" />
+    </div>
+    <div class="overlay" id="bubble">……おや、来てくれたのですね。</div>
+  </div>
+  <div class="toolbar">
+    <button id="btn-rand">セリフ（ランダム）</button>
+    <button id="btn-greet">時間の挨拶</button>
+    <button id="btn-mood">微笑</button>
+    <button id="btn-coat">白衣 ON/OFF</button>
+    <button id="btn-smoke">喫煙 ON/OFF</button>
+  </div>
+  <div class="row">
+    <div class="note">画像ファイル：base.png / coat.png / smile.png / smoke.png を同じフォルダに入れてください。<br>タップでもセリフが切り替わります。</div>
+  </div>
+</div>
+<script>
+(function(){
+  const bubble = document.getElementById('bubble');
+  const char = document.getElementById('char');
+  const imgCoat = document.getElementById('img-coat');
+  const imgSmile = document.getElementById('img-smile');
+  const imgSmoke = document.getElementById('img-smoke');
+  const btnRand = document.getElementById('btn-rand');
+  const btnGreet = document.getElementById('btn-greet');
+  const btnMood = document.getElementById('btn-mood');
+  const btnCoat = document.getElementById('btn-coat');
+  const btnSmoke = document.getElementById('btn-smoke');
+
+  // Persist outfit toggles
+  const state = {
+    coat: localStorage.getItem('lover_coat') === '1',
+    smoke: (localStorage.getItem('lover_smoke') ?? '') !== '' ? localStorage.getItem('lover_smoke') === '1' : (Math.random()<0.5),
+    mood: false
+  };
+  function sync(){
+    imgCoat.style.display = state.coat ? 'block' : 'none';
+    imgSmile.style.display = state.mood ? 'block' : 'none';
+    imgSmoke.style.display = state.smoke ? 'block' : 'none';
+    localStorage.setItem('lover_coat', state.coat ? '1' : '0');
+    localStorage.setItem('lover_smoke', state.smoke ? '1' : '0');
+  }
+  sync();
+
+  // Lines
+  const baseLines = [
+    "……おや、来てくれたのですね。",
+    "待たせてしまいましたね。",
+    "静かな夜です。あなたも、息をひとつ。",
+    "ふふ、そんな顔をするのですね。……可愛らしい。",
+    "目を閉じて。……大丈夫、ここにいます。",
+    "背筋を伸ばして。はい、そう。呼吸が楽になるでしょう。"
+  ];
+  const smokeLines = [
+    "……気に障りますか？ すぐに消しますよ。",
+    "一本だけ。考えごとをしていると、つい。",
+    "火を見ると、落ち着くのです。……危ういですがね。"
+  ];
+  const coatLines = [
+    "白衣は便利です。あなたを抱きしめる時に、皺になりやすいのが難点ですが。",
+    "診察はしませんよ。ただ、脈をみるくらいなら。……いいですか？",
+    "脱ぐべきか、着たままが良いか……。あなたに委ねますよ。"
+  ];
+  function timeGreeting(){
+    const h = new Date().getHours();
+    if(h < 4) return  pick([
+    "……睡眠を犠牲にしてまで、何に夢中になっているのですか？……いけませんね。",
+    "まだ起きているのですか。……ええ、実は私も、です。",
+    "……夜更けに呼吸を合わせると、不思議と落ち着きますね",
+    "あなたが私の手を握ってくれるのなら、悪夢も悪くありませんね"
+]);
+    if(h < 11) return pick([
+    "おはようございます。朝の光は、体内時計の最高の薬です。",
+    "あなたは朝から元気ですね。……素晴らしいことです。ええ、ずっと見守っていたくなる。",
+    "……おや。睡眠不足ですか？……ふふ、私も人のことを言えませんがね。"
+]);
+    if(h < 15) return  pick([
+    "午前中頑張りましたね。一服しましょう。",
+    "お昼は食べましたか。眠たいのなら……少しだけ陽を浴びてください。",
+    "姉さん……桃は魅力的なひとでしょう。それに比べ、あなたがなぜ私のところへ来るのかわかりかねますが……ふふ。うれしいですよ。",
+    "仕事……いいんですよ。あなたのためなら私はいくらでも時間を作ります"
+]);
+    if(h < 19) return  pick([
+    "こんにちは。……肩に力が入りすぎていませんか。私と一緒にゆっくり呼吸をしましょう……。",
+    "おやつ、食べますか？チョコミントアイス……お好きなら、半分こしましょう。",
+    "空の色が変わる時間……あなたと見るのが好きです。",
+    "あなたは頑張り屋さんなんですから、自覚して休憩しないといけませんよ……。必要なら、私がお茶の相手をしますから。"
+]);
+    return  pick([
+    "夜風にあたりながら遠い空をぼうっとみつめると……一日のざわめきも死んだように静まります。",
+    "あの……今夜、眠る前にすこし撫でていただけませんか。……そうしたら、眠れる気がします。",
+    "お疲れ様です。家に帰ったら、あなたはもう安心していいのですよ。私がついてますから……。",
+    "こんばんは。今日もよく来ましたね。どうぞ一息ついてください。"
+]);
+
+  }
+
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  function randomLine(){
+    let pools = [baseLines];
+    if(state.smoke) pools.push(smokeLines);
+    if(state.coat) pools.push(coatLines);
+    const bag = pools.flat();
+    say(pick(bag));
+  }
+  function say(text){
+    bubble.textContent = text;
+  }
+
+  // Events
+  char.addEventListener('click',randomLine );
+  btnRand.addEventListener('click', randomLine);
+  btnGreet.addEventListener('click', ()=> say(timeGreeting()));
+  btnMood.addEventListener('click', ()=>{ state.mood = !state.mood; sync(); say(state.mood ? "……そんなに見つめられると、困りますよ。" : "では、少しだけ真面目に。"); });
+  btnCoat.addEventListener('click', ()=>{ state.coat = !state.coat; sync(); say(state.coat ? "白衣、好きですね？" : "では、素顔で。"); });
+  btnSmoke.addEventListener('click', ()=>{ state.smoke = !state.smoke; sync(); say(state.smoke ? "一本だけ。すぐに戻ります。" : "わかりました。やめておきましょう。"); });
+
+  // First greet
+  if(!localStorage.getItem('lover_first_seen')){
+    say("……おや、すみません。待たせてしまいましたね。");
+    localStorage.setItem('lover_first_seen','1');
+  }else{
+    // time greeting on load
+    say(timeGreeting());
+  }
+})();
+</script>
+</body>
+</html>
