@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>紫煙くゆる生物室（インポート＋全画面＋カスタム台詞）</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root { --bg:#0f0f12; --fg:#e8e8ee; --muted:#9aa0a6; --accent:#bca0ff; --card:#17171b; }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif;
+            min-height:100dvh; }
+  .wrap{display:flex;flex-direction:column;gap:12px;padding:16px;max-width:960px;margin:0 auto; box-sizing:border-box}
+  .stage{position:relative;border-radius:16px;background:linear-gradient(180deg,#1a1a22,#0d0d10);min-height:58dvh;
+         display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.05)}
+  .char{position:relative;width:min(520px,92vw);aspect-ratio:3/5;background:#111;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:manipulation}
+  .layer{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
+  .overlay{position:absolute;inset:auto 12px 12px 12px;background:rgba(20,20,26,.7);color:var(--fg);
+           border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.6;backdrop-filter:blur(6px)}
+  .toolbar,.importer,.controls{display:flex;gap:8px;flex-wrap:wrap}
+  button{background:var(--card);color:var(--fg);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;font-size:14px}
+  button:active{transform:translateY(1px)}
+  .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .note{color:var(--muted);font-size:12px}
+  .panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}
+  input[type=file]{display:none}
+  .filelabel{display:inline-block;background:var(--card);border:1px solid rgba(255,255,255,.12);padding:8px 10px;border-radius:10px;font-size:13px}
+  textarea{width:100%;min-height:90px;background:var(--card);color:var(--fg);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;font-size:13px;box-sizing:border-box}
+  .hidden{display:none}
+  .stickyTop{position:sticky; top: env(safe-area-inset-top); z-index:5; background:linear-gradient(180deg,rgba(15,15,18,.9),rgba(15,15,18,.6)); backdrop-filter: blur(6px); padding:8px 12px; border-radius:12px; display:flex; gap:8px; align-items:center; justify-content:space-between; border:1px solid rgba(255,255,255,.08)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stickyTop">
+    <div class="controls">
+      <button id="btn-fs">全画面</button>
+      <button id="btn-ui">UI表示/非表示</button>
+    </div>
+    <div class="note">「ホーム画面に追加」でブラウザUIなしの表示が可能です（iOS/Android）</div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="char" id="char" title="タップでセリフ切替">
+      <img id="img-base"  class="layer" alt="base"  />
+      <img id="img-coat"  class="layer" alt="coat"  style="display:none"/>
+      <img id="img-smile" class="layer" alt="smile" style="display:none"/>
+      <img id="img-smoke" class="layer" alt="smoke" style="display:none"/>
+    </div>
+    <div class="overlay" id="bubble">……おや、来てくれたのですね。</div>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <button id="btn-rand">セリフ（ランダム）</button>
+    <button id="btn-greet">時間の挨拶</button>
+    <button id="btn-mood">微笑 ON/OFF</button>
+    <button id="btn-coat">白衣 ON/OFF</button>
+    <button id="btn-smoke">喫煙 ON/OFF</button>
+    <button id="btn-clear">画像をリセット</button>
+  </div>
+
+  <div class="panel" id="panel-import">
+    <div class="row">
+      <div>🖼 画像インポート（端末から読み込み・保存）</div>
+      <div class="note">一度読み込むとこの端末に保存され、オフラインでも表示されます。</div>
+    </div>
+    <div class="importer">
+      <label class="filelabel" for="file-base">base.png を選ぶ</label><input id="file-base" type="file" accept="image/*">
+      <label class="filelabel" for="file-coat">coat.png を選ぶ</label><input id="file-coat" type="file" accept="image/*">
+      <label class="filelabel" for="file-smile">smile.png を選ぶ</label><input id="file-smile" type="file" accept="image/*">
+      <label class="filelabel" for="file-smoke">smoke.png を選ぶ</label><input id="file-smoke" type="file" accept="image/*">
+    </div>
+  </div>
+
+  <div class="panel" id="panel-lines">
+    <div class="row"><div>✍️ カスタム台詞（貼り付け→保存）</div>
+      <div class="note">あなたが書いた台詞をそのまま使えます。JSONで保存・読み込み。</div></div>
+    <div class="note">下のデータは端末に保存され、次回も反映されます。既定の文は残したまま追加でもOK。</div>
+    <div class="row"><div>baseLines（通常）</div><button id="save-base">保存</button></div>
+    <textarea id="ta-base"></textarea>
+    <div class="row"><div>coatLines（白衣時に追加）</div><button id="save-coat">保存</button></div>
+    <textarea id="ta-coat"></textarea>
+    <div class="row"><div>smokeLines（喫煙時に追加）</div><button id="save-smoke">保存</button></div>
+    <textarea id="ta-smoke"></textarea>
+    <div class="row"><div>timeGreetings（時間帯ごとの候補）</div><button id="save-time">保存</button></div>
+    <textarea id="ta-time"></textarea>
+    <div class="row">
+      <button id="export-all">全部エクスポート</button>
+      <button id="import-all">インポート</button>
+    </div>
+    <textarea id="ta-io" placeholder='ここにJSONを貼る/ここからコピー'></textarea>
+  </div>
+
+  <div class="panel">
+    <div class="row"><div>🔎 クイック診断</div></div>
+    <div class="note" id="diag"></div>
+  </div>
+
+</div>
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const imgBase=$('img-base'), imgCoat=$('img-coat'), imgSmile=$('img-smile'), imgSmoke=$('img-smoke');
+  const bubble=$('bubble'), char=$('char');
+  const diag=$('diag');
+
+  // ===== State =====
+  const state = {
+    coat: localStorage.getItem('lover_coat')==='1',
+    smoke: (localStorage.getItem('lover_smoke') ?? '') !== '' ? localStorage.getItem('lover_smoke')==='1' : (Math.random()<0.5),
+    mood: false
+  };
+
+  function sync(){
+    imgCoat.style.display = state.coat ? 'block' : 'none';
+    imgSmile.style.display = state.mood ? 'block' : 'none';
+    imgSmoke.style.display = state.smoke ? 'block' : 'none';
+    localStorage.setItem('lover_coat', state.coat ? '1':'0');
+    localStorage.setItem('lover_smoke', state.smoke ? '1':'0');
+  }
+  function setBubble(t){ bubble.textContent=t; }
+  function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+  // ===== Default Lines =====
+  const defaults = {
+    baseLines:[
+      "……おや、来てくれたのですね。",
+      "待たせてしまいましたね。",
+      "静かな夜です。あなたも、息をひとつ。",
+      "ふふ、そんな顔をするのですね。……可愛らしい。",
+      "目を閉じて。……大丈夫、ここにいます。",
+      "背筋を伸ばして。はい、そう。呼吸が楽になるでしょう。"
+    ],
+    coatLines:[
+      "白衣は便利です。あなたを抱きしめる時に、皺になりやすいのが難点ですが。",
+      "診察はしませんよ。ただ、脈をみるくらいなら。……いいですか？",
+      "脱ぐべきか、着たままが良いか……。あなたに委ねますよ。"
+    ],
+    smokeLines:[
+      "……気に障りますか？ すぐに消しますよ。",
+      "一本だけ。考えごとをしていると、つい。",
+      "火を見ると、落ち着くのです。……危ういですがね。"
+    ],
+    timeGreetings:{
+      nightLate:[ "まだ起きているのですか……ええ、実は私もです。","夜更けに呼吸を合わせると、不思議と落ち着きますね。" ],
+      morning:  [ "おはようございます。朝の光は、体内時計の薬です。","……おや。睡眠不足ですか？ 私も人のことを言えませんがね。" ],
+      noon:     [ "お昼は食べましたか。眠たいのなら、少しだけ陽を浴びてください。","午後の光は気怠いですね……少し肩の力を抜きましょう。" ],
+      evening:  [ "こんにちは。肩に力が入りすぎていませんか。","空の色が変わる時間……あなたと見るのが好きです。" ],
+      night:    [ "こんばんは。今日もよく来ましたね。一息つきましょう。","家に帰ったら、あなたはもう安心していいのですよ。私がついています。" ]
+    }
+  };
+
+  // ===== Load/Save Custom Lines =====
+  const K = {
+    base:'lover_lines_base',
+    coat:'lover_lines_coat',
+    smoke:'lover_lines_smoke',
+    time:'lover_lines_time',
+    img:{base:'lover_img_base', coat:'lover_img_coat', smile:'lover_img_smile', smoke:'lover_img_smoke'}
+  };
+
+  function getJSON(key, fallback){
+    try{
+      const v = localStorage.getItem(key);
+      if(!v) return JSON.parse(JSON.stringify(fallback));
+      const parsed = JSON.parse(v);
+      return parsed && typeof parsed === 'object' ? parsed : JSON.parse(JSON.stringify(fallback));
+    }catch(e){
+      return JSON.parse(JSON.stringify(fallback));
+    }
+  }
+
+  let baseLines  = getJSON(K.base,  defaults.baseLines);
+  let coatLines  = getJSON(K.coat,  defaults.coatLines);
+  let smokeLines = getJSON(K.smoke, defaults.smokeLines);
+  let timeGreets = getJSON(K.time,  defaults.timeGreetings);
+
+  function saveLines(){
+    localStorage.setItem(K.base,  JSON.stringify(baseLines));
+    localStorage.setItem(K.coat,  JSON.stringify(coatLines));
+    localStorage.setItem(K.smoke, JSON.stringify(smokeLines));
+    localStorage.setItem(K.time,  JSON.stringify(timeGreets));
+  }
+
+  // ===== UI wiring =====
+  const btnRand   = $('btn-rand');
+  const btnGreet  = $('btn-greet');
+  const btnMood   = $('btn-mood');
+  const btnCoat   = $('btn-coat');
+  const btnSmoke  = $('btn-smoke');
+  const btnClear  = $('btn-clear');
+  const btnFS     = $('btn-fs');
+  const btnUI     = $('btn-ui');
+
+  const taBase=$('ta-base'), taCoat=$('ta-coat'), taSmoke=$('ta-smoke'), taTime=$('ta-time'), taIO=$('ta-io');
+  const saveBase=$('save-base'), saveCoat=$('save-coat'), saveSmoke=$('save-smoke'), saveTime=$('save-time');
+  const exportAll=$('export-all'), importAll=$('import-all');
+
+  function timeGreeting(){
+    const h = new Date().getHours();
+    if (h < 4)  return pick(timeGreets.nightLate || defaults.timeGreetings.nightLate);
+    if (h < 11) return pick(timeGreets.morning   || defaults.timeGreetings.morning);
+    if (h < 15) return pick(timeGreets.noon      || defaults.timeGreetings.noon);
+    if (h < 19) return pick(timeGreets.evening   || defaults.timeGreetings.evening);
+    return pick(timeGreets.night                 || defaults.timeGreetings.night);
+  }
+
+  function randomLine(){
+    let bag=[...baseLines];
+    if(state.coat) bag=bag.concat(coatLines);
+    if(state.smoke) bag=bag.concat(smokeLines);
+    setBubble(pick(bag));
+  }
+
+  // tap: only change line (no random mood flip)
+  char.addEventListener('click', randomLine);
+  btnRand.addEventListener('click', randomLine);
+  btnGreet.addEventListener('click', ()=>setBubble(timeGreeting()));
+  btnMood.addEventListener('click', ()=>{ state.mood=!state.mood; sync(); setBubble(state.mood?"……そんなに見つめられると、困りますよ。":"では、少しだけ真面目に。"); });
+  btnCoat.addEventListener('click', ()=>{ state.coat=!state.coat; sync(); setBubble(state.coat?"白衣、好きですね？":"では、素顔で。"); });
+  btnSmoke.addEventListener('click', ()=>{ state.smoke=!state.smoke; sync(); setBubble(state.smoke?"一本だけ。すぐに戻ります。":"わかりました。やめておきましょう。"); });
+  btnClear.addEventListener('click', ()=>{
+    Object.values(K.img).forEach(k=>localStorage.removeItem(k));
+    imgBase.removeAttribute('src'); imgCoat.removeAttribute('src'); imgSmile.removeAttribute('src'); imgSmoke.removeAttribute('src');
+    setBubble("画像をリセットしました。再度インポートしてください。"); updateDiag();
+  });
+
+  // Fullscreen + minimal UI
+  btnFS.addEventListener('click', async ()=>{
+    try{
+      if(!document.fullscreenElement){
+        await document.documentElement.requestFullscreen();
+        if (screen.orientation && screen.orientation.lock) { try{ await screen.orientation.lock('portrait'); }catch(e){} }
+      }else{
+        await document.exitFullscreen();
+      }
+    }catch(e){ setBubble("全画面はこの環境で許可されていません。ホーム追加をお試しください。"); }
+  });
+  btnUI.addEventListener('click', ()=>{
+    $('toolbar').classList.toggle('hidden');
+    $('panel-import').classList.toggle('hidden');
+    $('panel-lines').classList.toggle('hidden');
+  });
+
+  // Image persistence via localStorage
+  function loadImagesFromStorage(){
+    const b=localStorage.getItem(K.img.base);    if(b) imgBase.src=b;
+    const c=localStorage.getItem(K.img.coat);    if(c) imgCoat.src=c;
+    const s=localStorage.getItem(K.img.smile);   if(s) imgSmile.src=s;
+    const k=localStorage.getItem(K.img.smoke);   if(k) imgSmoke.src=k;
+  }
+  function bindFileInput(id,key,imgEl){
+    const input=$(id);
+    input.addEventListener('change',()=>{
+      const f=input.files && input.files[0]; if(!f) return;
+      const reader=new FileReader();
+      reader.onload=()=>{
+        try{
+          const data=reader.result;
+          imgEl.src=data;
+          localStorage.setItem(key,data);
+          setBubble("……はい。これで、いつでも会えます。");
+          updateDiag();
+        }catch(e){ setBubble("読み込みに失敗しました。"); }
+      };
+      reader.readAsDataURL(f);
+    });
+  }
+
+  // Diagnostics
+  function updateDiag(){
+    const kc = localStorage.getItem(K.img.base) ? "✅" : "—";
+    const items = [
+      `base: ${imgBase.src ? "読み込み済み" : "未設定"}`,
+      `coat: ${imgCoat.src ? "読み込み済み" : "未設定"}`,
+      `smile:${imgSmile.src ? "読み込み済み" : "未設定"}`,
+      `smoke:${imgSmoke.src ? "読み込み済み" : "未設定"}`,
+      `保存: ${kc}（この端末のローカル・ストレージ）`
+    ];
+    diag.textContent = items.join(" / ");
+  }
+
+  // Lines editor setup
+  function refreshEditors(){
+    taBase.value  = JSON.stringify(baseLines, null, 2);
+    taCoat.value  = JSON.stringify(coatLines, null, 2);
+    taSmoke.value = JSON.stringify(smokeLines, null, 2);
+    taTime.value  = JSON.stringify(timeGreets, null, 2);
+  }
+  function safeParse(text, fallback){
+    try{ const v = JSON.parse(text); return v; }catch(e){ return fallback; }
+  }
+  saveBase.addEventListener('click', ()=>{ baseLines = safeParse(taBase.value, baseLines); saveLines(); setBubble("baseLines を保存しました。"); });
+  saveCoat.addEventListener('click', ()=>{ coatLines = safeParse(taCoat.value, coatLines); saveLines(); setBubble("coatLines を保存しました。"); });
+  saveSmoke.addEventListener('click', ()=>{ smokeLines = safeParse(taSmoke.value, smokeLines); saveLines(); setBubble("smokeLines を保存しました。"); });
+  saveTime.addEventListener('click', ()=>{ timeGreets = safeParse(taTime.value, timeGreets); saveLines(); setBubble("timeGreetings を保存しました。"); });
+
+  exportAll.addEventListener('click', ()=>{
+    const payload = {
+      baseLines, coatLines, smokeLines, timeGreetings: timeGreets
+    };
+    taIO.value = JSON.stringify(payload, null, 2);
+    setBubble("設定をエクスポート欄に書き出しました。");
+  });
+  importAll.addEventListener('click', ()=>{
+    const obj = safeParse(taIO.value, null);
+    if(!obj){ setBubble("JSON を読み取れませんでした。"); return; }
+    if(obj.baseLines)  baseLines  = obj.baseLines;
+    if(obj.coatLines)  coatLines  = obj.coatLines;
+    if(obj.smokeLines) smokeLines = obj.smokeLines;
+    if(obj.timeGreetings) timeGreets = obj.timeGreetings;
+    saveLines(); refreshEditors();
+    setBubble("設定をインポートし保存しました。");
+  });
+
+  // Init
+  bindFileInput('file-base',  K.img.base,  imgBase);
+  bindFileInput('file-coat',  K.img.coat,  imgCoat);
+  bindFileInput('file-smile', K.img.smile, imgSmile);
+  bindFileInput('file-smoke', K.img.smoke, imgSmoke);
+
+  loadImagesFromStorage();
+  sync();
+  setBubble(localStorage.getItem('lover_first_seen') ? timeGreeting() : "……おや、すみません。待たせてしまいましたね。");
+  localStorage.setItem('lover_first_seen','1');
+  updateDiag();
+  refreshEditors();
+
+  // Tap on char to only change line
+  document.getElementById('char').addEventListener('click', randomLine);
+  document.getElementById('btn-rand').addEventListener('click', randomLine);
+  document.getElementById('btn-greet').addEventListener('click', ()=>setBubble(timeGreeting()));
+  document.getElementById('btn-mood').addEventListener('click', ()=>{ state.mood=!state.mood; sync(); setBubble(state.mood?"……そんなに見つめられると、困りますよ。":"では、少しだけ真面目に。"); });
+  document.getElementById('btn-coat').addEventListener('click', ()=>{ state.coat=!state.coat; sync(); setBubble(state.coat?"白衣、好きですね？":"では、素顔で。"); });
+  document.getElementById('btn-smoke').addEventListener('click', ()=>{ state.smoke=!state.smoke; sync(); setBubble(state.smoke?"一本だけ。すぐに戻ります。":"わかりました。やめておきましょう。"); });
+  document.getElementById('btn-clear').addEventListener('click', ()=>{
+    Object.values(K.img).forEach(k=>localStorage.removeItem(k));
+    imgBase.removeAttribute('src'); imgCoat.removeAttribute('src'); imgSmile.removeAttribute('src'); imgSmoke.removeAttribute('src');
+    setBubble("画像をリセットしました。再度インポートしてください。"); updateDiag();
+  });
+})();
+</script>
+</body>
+</html>
