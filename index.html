@@ -13,98 +13,113 @@
   :root { --bg:#0f0f12; --fg:#e8e8ee; --muted:#9aa0a6; --accent:#bca0ff; --card:#17171b; }
   html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
             font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif;
-            min-height:100dvh;}
-  .wrap{display:flex;flex-direction:column;gap:12px;padding:16px;max-width:960px;margin:0 auto; box-sizing:border-box}
-  .stage{position:relative;border-radius:16px;background:linear-gradient(180deg,#1a1a22,#0d0d10);min-height:58dvh;
-         display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.05)}
-  .char{position:relative;width:min(520px,92vw);aspect-ratio:3/5;background:#111;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:manipulation}
+            min-height:100dvh;height:100%;overflow:hidden;}
+  .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;
+         background:linear-gradient(180deg,#13131a,#0b0b0e);}
+  /* 時間帯テーマ */
+  .t-late  { background:radial-gradient(1200px 600px at 50% -10%,#27223a 0%,#121218 60%,#0a0a0d 100%); }
+  .t-morn  { background:radial-gradient(1200px 600px at 50% -10%,#f1f4ff 0%,#dfe8ff 40%,#c8d4ff 60%,#aeb8ff 75%,#5860a0 100%); }
+  .t-noon  { background:linear-gradient(180deg,#dfe9ff,#bcd4ff 50%,#8aa4ff); }
+  .t-eve   { background:radial-gradient(1000px 520px at 50% -10%,#ffd7e0 0%,#c39ad3 40%,#6e68a6 70%,#2b2a46 100%); }
+  .t-night { background:radial-gradient(1000px 520px at 50% -10%,#1a1f35 0%,#101425 55%,#0b0e18 100%); }
+
+  .char{position:relative;width:min(92vw,780px);max-height:92vh;aspect-ratio:3/5;border-radius:18px;overflow:hidden;
+        display:flex;align-items:center;justify-content:center;background:#0c0c0f;box-shadow:0 20px 60px rgba(0,0,0,.5),
+        inset 0 0 0 1px rgba(255,255,255,.05);}
   .layer{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
-  .overlay{position:absolute;inset:auto 12px 12px 12px;background:rgba(20,20,26,.7);color:var(--fg);
-           border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.6;backdrop-filter:blur(6px)}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap}
-  button{background:var(--card);color:var(--fg);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;font-size:14px}
-  button:active{transform:translateY(1px)}
-  .hidden{display:none}
-  .settings-btn{position:fixed;right:16px;bottom:16px;width:52px;height:52px;border-radius:50%;
+
+  /* セリフボックス */
+  .overlay{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+           max-width:min(92vw,780px);width:clamp(280px,80vw,720px);
+           color:var(--fg);font-size:16px;line-height:1.7;letter-spacing:.2px}
+  .bubble{background:rgba(20,20,26,.72);border:1px solid rgba(255,255,255,.12);
+          border-radius:14px;padding:12px 14px;backdrop-filter:blur(8px);transition:opacity .2s ease;}
+  .bubble.hidebox { background:transparent;border-color:transparent;backdrop-filter:none; }
+  .bubbletext.hidden { visibility:hidden; }
+
+  /* 歯車＆メニュー */
+  .settings-btn{position:fixed;right:14px;bottom:14px;width:52px;height:52px;border-radius:50%;
                 display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(0,0,0,.6);
-                border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:10;}
-  .settings-menu{position:fixed;right:16px;bottom:76px;min-width:200px;background:rgba(18,18,22,.95);
+                border:1px solid rgba(255,255,255,.12);box-shadow:0 12px 28px rgba(0,0,0,.45); z-index:10;}
+  .settings-menu{position:fixed;right:14px;bottom:74px;min-width:220px;background:rgba(18,18,22,.96);
                  border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:8px;display:none; z-index:10;}
   .settings-menu .item{display:block;width:100%;text-align:left;border:none;background:transparent;
-                       padding:10px;border-radius:8px;font-size:14px}
+                       padding:10px;border-radius:8px;font-size:14px;color:var(--fg)}
   .settings-menu .item:hover{background:rgba(255,255,255,.06)}
 </style>
 </head>
 <body>
-<div class="wrap">
   <div class="stage" id="stage">
-    <div class="char" id="char" title="タップでセリフ切替">
+    <div class="char" id="char" title="タップで話す">
       <img id="img-base"  class="layer" alt="base"  src="base.png"  onerror="this.style.display='none'"/>
       <img id="img-smile" class="layer" alt="smile" src="smile.png" style="display:none" onerror="this.style.display='none'"/>
     </div>
-    <div class="overlay" id="bubble">……おや、来てくれたのですね。</div>
+    <div class="overlay">
+      <div class="bubble" id="bubble"><span id="bubbleText">……おや、来てくれたのですね。</span></div>
+    </div>
   </div>
 
-  <div class="toolbar" id="toolbar">
-    <button id="btn-rand">セリフ（ランダム）</button>
-    <button id="btn-greet">時間の挨拶</button>
-    <button id="btn-mood">微笑 ON/OFF</button>
-    <button id="btn-full">全画面</button>
+  <!-- 歯車 -->
+  <button class="settings-btn" id="settings-btn" aria-label="設定">⚙</button>
+  <div class="settings-menu" id="settings-menu">
+    <button class="item" id="menu-full">全画面 ON/OFF</button>
+    <button class="item" id="menu-text">セリフ表示 ON/OFF</button>
+    <button class="item" id="menu-box">セリフボックス表示 ON/OFF</button>
+    <button class="item" id="menu-reload">再読み込み</button>
   </div>
-</div>
-
-<button class="settings-btn" id="settings-btn" aria-label="設定">⚙</button>
-<div class="settings-menu" id="settings-menu">
-  <button class="item" id="menu-full">全画面 ON/OFF</button>
-  <button class="item" id="menu-ui">UI 表示/非表示</button>
-  <button class="item" id="menu-reload">再読み込み</button>
-</div>
 
 <script>
 (function(){
   const $ = (id)=>document.getElementById(id);
-  const imgBase=$('img-base'), imgSmile=$('img-smile');
-  const bubble=$('bubble');
+  const stage=$('stage'), char=$('char'), imgSmile=$('img-smile');
+  const bubble=$('bubble'), bubbleText=$('bubbleText');
 
-  const state = { mood:false };
-
-  function sync(){
-    imgSmile.style.display = state.mood && imgSmile.getAttribute('src') ? 'block' : 'none';
+  // ========= 背景：時間連動 =========
+  function classSwap(el, names){ names.forEach(n=>el.classList.remove(n)); }
+  function setBackdropByTime(){
+    const h = new Date().getHours();
+    classSwap(stage, ['t-late','t-morn','t-noon','t-eve','t-night']);
+    if(h < 4)      stage.classList.add('t-late');
+    else if(h < 11)stage.classList.add('t-morn');
+    else if(h < 15)stage.classList.add('t-noon');
+    else if(h < 19)stage.classList.add('t-eve');
+    else           stage.classList.add('t-night');
   }
-  function setBubble(t){ bubble.textContent=t; }
+  setBackdropByTime();
+  setInterval(setBackdropByTime, 60*1000); // 1分ごとに再評価
+
+  // ========= セリフ =========
   function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
-
   const timeGreetings={
-     nightLate:[
-        "まだ起きているのですか……ええ、実は私もです。",
-        "夜更けに呼吸を合わせると、不思議と落ち着きますね。"
-      ],
-      morning:[
-        "おはようございます。朝の光は、体内時計の薬です。",
-        "あなたは朝から元気ですね。……素晴らしいことです。ええ、ずっと見守っていたいです。",
-        "……おや。睡眠不足ですか？ 私も人のことを言えませんがね。"
-      ],
-      noon:[
-        "午後の光は気怠いですね……少し肩の力を抜きましょう。",
-        "午前中頑張りましたね。一服しましょう。",
-        "お昼は食べましたか。眠たいのなら、少しだけ陽を浴びてください。",
-        "姉さん……桃は魅力的なひとでしょう。それに比べ、あなたがなぜ私のところへ来るのかわかりかねますが……ふふ。うれしいですよ。",
-        "仕事……いいんですよ。あなたのためなら私はいくらでも時間を作ります。"
-      ],
-      evening:[
-        "こんにちは。……肩に力が入りすぎていませんか。私と一緒にゆっくり呼吸をしましょう……。",
-        "おやつ、食べますか？ チョコミントアイス……お好きなら、半分こしましょう。",
-        "空の色が変わる時間……あなたと見るのが好きです。",
-        "あなたは頑張り屋さんなんですから、自覚して休憩しないといけませんよ……。必要なら、私がお茶を淹れます。"
-      ],
-      night:[
-        "夜風にあたりながら遠い空をぼうっと見つめると……一日のざわめきも死んだように静まります。",
-        "あの……今夜、眠る前にすこし撫でていただけませんか。……そうしたら、眠れる気がします。",
-        "お疲れ様です。家に帰ったら、あなたはもう安心していいのですよ。私がついていますから……。",
-        "こんばんは。今日もよく来ましたね。どうぞ一息ついてください。"
-      ]
+    nightLate:[
+      "まだ起きているのですか……ええ、実は私もです。",
+      "夜更けに呼吸を合わせると、不思議と落ち着きますね。"
+    ],
+    morning:[
+      "おはようございます。朝の光は、体内時計の薬です。",
+      "あなたは朝から元気ですね。……素晴らしいことです。ええ、ずっと見守っていたいです。",
+      "……おや。睡眠不足ですか？ 私も人のことを言えませんがね。"
+    ],
+    noon:[
+      "午後の光は気怠いですね……少し肩の力を抜きましょう。",
+      "午前中頑張りましたね。一服しましょう。",
+      "お昼は食べましたか。眠たいのなら、少しだけ陽を浴びてください。",
+      "姉さん……桃は魅力的なひとでしょう。それに比べ、あなたがなぜ私のところへ来るのかわかりかねますが……ふふ。うれしいですよ。",
+      "仕事……いいんですよ。あなたのためなら私はいくらでも時間を作ります。"
+    ],
+    evening:[
+      "こんにちは。……肩に力が入りすぎていませんか。私と一緒にゆっくり呼吸をしましょう……。",
+      "おやつ、食べますか？ チョコミントアイス……お好きなら、半分こしましょう。",
+      "空の色が変わる時間……あなたと見るのが好きです。",
+      "あなたは頑張り屋さんなんですから、自覚して休憩しないといけませんよ……。必要なら、私がお茶を淹れます。"
+    ],
+    night:[
+      "夜風にあたりながら遠い空をぼうっと見つめると……一日のざわめきも死んだように静まります。",
+      "あの……今夜、眠る前にすこし撫でていただけませんか。……そうしたら、眠れる気がします。",
+      "お疲れ様です。家に帰ったら、あなたはもう安心していいのですよ。私がついていますから……。",
+      "こんばんは。今日もよく来ましたね。どうぞ一息ついてください。"
+    ]
   };
-
   const baseLines=[
     "……おや、来てくれたのですね。",
     "待たせてしまいましたね。",
@@ -113,45 +128,65 @@
     "ふふ、そんな顔をするのですね。……可愛らしい。",
     "呼吸を整えて。—はい、今ので少し楽になったでしょう。"
   ];
-
   function timeGreeting(){
-    const h = new Date().getHours();
-    if (h < 4)  return pick(timeGreetings.nightLate);
-    if (h < 11) return pick(timeGreetings.morning);
-    if (h < 15) return pick(timeGreetings.noon);
-    if (h < 19) return pick(timeGreetings.evening);
+    const h=new Date().getHours();
+    if(h<4) return pick(timeGreetings.nightLate);
+    if(h<11) return pick(timeGreetings.morning);
+    if(h<15) return pick(timeGreetings.noon);
+    if(h<19) return pick(timeGreetings.evening);
     return pick(timeGreetings.night);
   }
-  function randomLine(){ setBubble(pick(baseLines)); }
+  function randomBase(){ return pick(baseLines); }
 
-  // 初期
-  sync();
-  setBubble(localStorage.getItem('lover_first_seen') ? timeGreeting() : "……おや、すみません。待たせてしまいましたね。");
+  function speak(){
+    // 50/50で時間挨拶 or ランダム
+    const line = (Math.random()<0.5) ? timeGreeting() : randomBase();
+    bubbleText.textContent = line;
+    // 表情はおまかせ確率（40%で微笑ON）
+    const mood = Math.random()<0.4;
+    imgSmile.style.display = mood && imgSmile.getAttribute('src') ? 'block' : 'none';
+  }
+
+  // 初期一言
+  bubbleText.textContent = localStorage.getItem('lover_first_seen')
+    ? timeGreeting()
+    : "……おや、すみません。待たせてしまいましたね。";
   localStorage.setItem('lover_first_seen','1');
 
-  // クリック/ボタン
-  $('char').addEventListener('click', randomLine);
-  $('btn-rand').addEventListener('click', randomLine);
-  $('btn-greet').addEventListener('click', ()=>setBubble(timeGreeting()));
-  $('btn-mood').addEventListener('click', ()=>{ state.mood=!state.mood; sync(); setBubble(state.mood?"……そんなに見つめられると、困りますよ。":"では、少しだけ真面目に。"); });
+  // 画面タップで発話
+  char.addEventListener('click', speak);
+  stage.addEventListener('click', (e)=>{ if(e.target===stage) speak(); }); // 背景タップでもOK
 
+  // ========= 歯車 =========
+  const btnSettings=$('settings-btn'), menu=$('settings-menu');
+  btnSettings.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    menu.style.display = (menu.style.display==='block') ? 'none' : 'block';
+  });
+  document.addEventListener('click', ()=>{ menu.style.display='none'; });
+
+  // 全画面
   async function toggleFS(){ try{
     if(!document.fullscreenElement){
       await document.documentElement.requestFullscreen();
-      if (screen.orientation && screen.orientation.lock) { try{ await screen.orientation.lock('portrait'); }catch(e){} }
-    }else{ await document.exitFullscreen(); }
-  }catch(e){ setBubble("全画面はこの環境で制限されています。ホーム追加もお試しを。"); } }
-  $('btn-full').addEventListener('click', toggleFS);
-
-  const btnSettings=$('settings-btn'), menu=$('settings-menu');
-  btnSettings.addEventListener('click', ()=>{
-    menu.style.display = (menu.style.display==='block') ? 'none' : 'block';
-  });
-  document.addEventListener('click', (e)=>{
-    if(!menu.contains(e.target) && e.target!==btnSettings){ menu.style.display='none'; }
-  });
+      if(screen.orientation && screen.orientation.lock){ try{ await screen.orientation.lock('portrait'); }catch(e){} }
+    }else{
+      await document.exitFullscreen();
+    }
+  }catch(e){ /* 環境制限の場合は無言 */ } }
   $('menu-full').addEventListener('click', toggleFS);
-  $('menu-ui').addEventListener('click', ()=>{ $('toolbar').classList.toggle('hidden'); });
+
+  // セリフ表示 ON/OFF（テキストだけ隠す）
+  $('menu-text').addEventListener('click', ()=>{
+    bubbleText.classList.toggle('hidden');
+  });
+
+  // セリフボックス表示 ON/OFF（枠・背景を消す。テキストは保持可能）
+  $('menu-box').addEventListener('click', ()=>{
+    bubble.classList.toggle('hidebox');
+  });
+
+  // 再読み込み
   $('menu-reload').addEventListener('click', ()=>location.reload());
 })();
 </script>
