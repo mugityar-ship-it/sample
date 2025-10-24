@@ -13,31 +13,34 @@
   :root { --bg:#0f0f12; --fg:#e8e8ee; --muted:#9aa0a6; --accent:#bca0ff; --card:#17171b; }
   html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
             font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif;
-            min-height:100dvh;height:100%;overflow:hidden;}
+            height:100%;min-height:100dvh;overflow:hidden;}
+
+  /* ステージ全面＋時間帯背景 */
   .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;
          background:linear-gradient(180deg,#13131a,#0b0b0e);}
-  /* 時間帯テーマ */
   .t-late  { background:radial-gradient(1200px 600px at 50% -10%,#27223a 0%,#121218 60%,#0a0a0d 100%); }
   .t-morn  { background:radial-gradient(1200px 600px at 50% -10%,#f1f4ff 0%,#dfe8ff 40%,#c8d4ff 60%,#aeb8ff 75%,#5860a0 100%); }
   .t-noon  { background:linear-gradient(180deg,#dfe9ff,#bcd4ff 50%,#8aa4ff); }
   .t-eve   { background:radial-gradient(1000px 520px at 50% -10%,#ffd7e0 0%,#c39ad3 40%,#6e68a6 70%,#2b2a46 100%); }
   .t-night { background:radial-gradient(1000px 520px at 50% -10%,#1a1f35 0%,#101425 55%,#0b0e18 100%); }
 
-  .char{position:relative;width:min(92vw,780px);max-height:92vh;aspect-ratio:3/5;border-radius:18px;overflow:hidden;
-        display:flex;align-items:center;justify-content:center;background:#0c0c0f;box-shadow:0 20px 60px rgba(0,0,0,.5),
-        inset 0 0 0 1px rgba(255,255,255,.05);}
+  /* 彼をさらに大きく（左右の空白最小） */
+  .char{position:relative;width:min(98vw,1000px);max-height:96vh;aspect-ratio:3/5;border-radius:16px;overflow:hidden;
+        display:flex;align-items:center;justify-content:center;background:#0c0c0f;
+        box-shadow:0 18px 54px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05);}
   .layer{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 
-  /* セリフボックス */
-  .overlay{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
-           max-width:min(92vw,780px);width:clamp(280px,80vw,720px);
-           color:var(--fg);font-size:16px;line-height:1.7;letter-spacing:.2px}
-  .bubble{background:rgba(20,20,26,.72);border:1px solid rgba(255,255,255,.12);
+  /* セリフボックス：太ももに重なる高さに */
+  .overlay{position:absolute;left:50%;bottom:2.8vh;transform:translateX(-50%);
+           width:min(96vw,980px);max-width:980px;pointer-events:none}
+  .bubble{pointer-events:auto; /* 歯車操作に影響しない */
+          color:var(--fg);font-size:16px;line-height:1.75;letter-spacing:.2px;
+          background:rgba(20,20,26,.72);border:1px solid rgba(255,255,255,.12);
           border-radius:14px;padding:12px 14px;backdrop-filter:blur(8px);transition:opacity .2s ease;}
   .bubble.hidebox { background:transparent;border-color:transparent;backdrop-filter:none; }
-  .bubbletext.hidden { visibility:hidden; }
+  .overlay.hidden { display:none; }   /* ← テキスト非表示のときはボックスごと非表示 */
 
-  /* 歯車＆メニュー */
+  /* 歯車＆メニュー（最小構成） */
   .settings-btn{position:fixed;right:14px;bottom:14px;width:52px;height:52px;border-radius:50%;
                 display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(0,0,0,.6);
                 border:1px solid rgba(255,255,255,.12);box-shadow:0 12px 28px rgba(0,0,0,.45); z-index:10;}
@@ -54,17 +57,16 @@
       <img id="img-base"  class="layer" alt="base"  src="base.png"  onerror="this.style.display='none'"/>
       <img id="img-smile" class="layer" alt="smile" src="smile.png" style="display:none" onerror="this.style.display='none'"/>
     </div>
-    <div class="overlay">
+    <div class="overlay" id="overlay">
       <div class="bubble" id="bubble"><span id="bubbleText">……おや、来てくれたのですね。</span></div>
     </div>
   </div>
 
-  <!-- 歯車 -->
+  <!-- 歯車（全画面ボタンは削除） -->
   <button class="settings-btn" id="settings-btn" aria-label="設定">⚙</button>
   <div class="settings-menu" id="settings-menu">
-    <button class="item" id="menu-full">全画面 ON/OFF</button>
-    <button class="item" id="menu-text">セリフ表示 ON/OFF</button>
-    <button class="item" id="menu-box">セリフボックス表示 ON/OFF</button>
+    <button class="item" id="menu-text">セリフ表示 ON/OFF（ボックス連動）</button>
+    <button class="item" id="menu-box">セリフボックス表示 ON/OFF（枠のみ）</button>
     <button class="item" id="menu-reload">再読み込み</button>
   </div>
 
@@ -72,13 +74,13 @@
 (function(){
   const $ = (id)=>document.getElementById(id);
   const stage=$('stage'), char=$('char'), imgSmile=$('img-smile');
-  const bubble=$('bubble'), bubbleText=$('bubbleText');
+  const overlay=$('overlay'), bubble=$('bubble'), bubbleText=$('bubbleText');
 
-  // ========= 背景：時間連動 =========
-  function classSwap(el, names){ names.forEach(n=>el.classList.remove(n)); }
+  // ==== 背景：時間連動 ====
+  function clsSwap(el, names){ names.forEach(n=>el.classList.remove(n)); }
   function setBackdropByTime(){
     const h = new Date().getHours();
-    classSwap(stage, ['t-late','t-morn','t-noon','t-eve','t-night']);
+    clsSwap(stage, ['t-late','t-morn','t-noon','t-eve','t-night']);
     if(h < 4)      stage.classList.add('t-late');
     else if(h < 11)stage.classList.add('t-morn');
     else if(h < 15)stage.classList.add('t-noon');
@@ -86,9 +88,9 @@
     else           stage.classList.add('t-night');
   }
   setBackdropByTime();
-  setInterval(setBackdropByTime, 60*1000); // 1分ごとに再評価
+  setInterval(setBackdropByTime, 60*1000);
 
-  // ========= セリフ =========
+  // ==== セリフ ====
   function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
   const timeGreetings={
     nightLate:[
@@ -137,12 +139,9 @@
     return pick(timeGreetings.night);
   }
   function randomBase(){ return pick(baseLines); }
-
   function speak(){
-    // 50/50で時間挨拶 or ランダム
     const line = (Math.random()<0.5) ? timeGreeting() : randomBase();
     bubbleText.textContent = line;
-    // 表情はおまかせ確率（40%で微笑ON）
     const mood = Math.random()<0.4;
     imgSmile.style.display = mood && imgSmile.getAttribute('src') ? 'block' : 'none';
   }
@@ -153,11 +152,11 @@
     : "……おや、すみません。待たせてしまいましたね。";
   localStorage.setItem('lover_first_seen','1');
 
-  // 画面タップで発話
-  char.addEventListener('click', speak);
-  stage.addEventListener('click', (e)=>{ if(e.target===stage) speak(); }); // 背景タップでもOK
+  // 画面タップで発話（背景タップでもOK）
+  $('char').addEventListener('click', speak);
+  stage.addEventListener('click', (e)=>{ if(e.target===stage) speak(); });
 
-  // ========= 歯車 =========
+  // ==== 歯車（全画面は削除） ====
   const btnSettings=$('settings-btn'), menu=$('settings-menu');
   btnSettings.addEventListener('click', (e)=>{
     e.stopPropagation();
@@ -165,24 +164,19 @@
   });
   document.addEventListener('click', ()=>{ menu.style.display='none'; });
 
-  // 全画面
-  async function toggleFS(){ try{
-    if(!document.fullscreenElement){
-      await document.documentElement.requestFullscreen();
-      if(screen.orientation && screen.orientation.lock){ try{ await screen.orientation.lock('portrait'); }catch(e){} }
-    }else{
-      await document.exitFullscreen();
-    }
-  }catch(e){ /* 環境制限の場合は無言 */ } }
-  $('menu-full').addEventListener('click', toggleFS);
-
-  // セリフ表示 ON/OFF（テキストだけ隠す）
+  // セリフ表示 ON/OFF（テキスト非表示のときはボックスも連動で消す）
   $('menu-text').addEventListener('click', ()=>{
-    bubbleText.classList.toggle('hidden');
+    const hidden = overlay.classList.toggle('hidden'); // ← overlayごと隠す
+    if(hidden){
+      // 連動でボックス効果も透明化しておく（再表示時の状態は維持）
+      bubble.classList.add('hidebox');
+    }
   });
 
-  // セリフボックス表示 ON/OFF（枠・背景を消す。テキストは保持可能）
+  // セリフボックス表示 ON/OFF（枠/背景だけを消す。テキストは残す）
   $('menu-box').addEventListener('click', ()=>{
+    // テキストが非表示状態なら先に表示してから枠だけ操作できるように
+    if(overlay.classList.contains('hidden')) overlay.classList.remove('hidden');
     bubble.classList.toggle('hidebox');
   });
 
