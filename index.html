@@ -25,10 +25,34 @@
   .t-night { background:radial-gradient(1000px 520px at 50% -10%,#1a1f35 0%,#101425 55%,#0b0e18 100%); }
 
   /* 彼をさらに大きく（左右の空白最小） */
-  .char{position:relative;width:min(98vw,1000px);max-height:96vh;aspect-ratio:3/5;border-radius:16px;overflow:hidden;
-        display:flex;align-items:center;justify-content:center;background:#0c0c0f;
-        box-shadow:0 18px 54px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05);}
-  .layer{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
+  .char {
+  position:relative;
+  width: min(110vw, 1200px);
+  max-height: 100vh;
+  aspect-ratio: 3/5;
+  border-radius: 16px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#0c0c0f;
+  transform: scale(1.08);
+  transform-origin: center bottom;
+  box-shadow:0 18px 54px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.layer {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  pointer-events:none;
+  image-rendering:-webkit-optimize-contrast;
+  transform:translateZ(0);
+  opacity:0;
+  transition:opacity .6s ease;
+}
+.layer.loaded{opacity:1;}
 
   /* セリフボックス：太ももに重なる高さに */
   .overlay{position:absolute;left:50%;bottom:2.8vh;transform:translateX(-50%);
